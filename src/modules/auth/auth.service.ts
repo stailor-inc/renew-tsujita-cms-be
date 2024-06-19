@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, UnauthorizedException, ForbiddenException, HttpException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, HttpException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { isDate } from 'util/types';
 import * as EmailValidator from 'email-validator';
@@ -78,7 +78,8 @@ export class AuthService {
     }
 
     try {
-      const auditLogEntry = new AuditLog();
+      // Patched: Instantiate AuditLog with constructor arguments
+      const auditLogEntry = new AuditLog(userId, timestamp, manipulate, params);
       auditLogEntry.user_id = userId;
       auditLogEntry.timestamp = timestamp;
       auditLogEntry.manipulate = manipulate;

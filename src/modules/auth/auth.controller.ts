@@ -10,8 +10,9 @@ export class AuthController {
 
   @Post('/auth/login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() loginDto: LoginDto): Promise<LoginResponseDto> {
+  async login(@Body() loginDto: LoginDto): Promise<LoginResponseDto> | never {
     // ... existing login method code
+    throw new HttpException('Method not implemented.', HttpStatus.NOT_IMPLEMENTED);
   }
 
   @Post('/audit_logs')
@@ -19,7 +20,7 @@ export class AuthController {
     try {
       const { user_id, timestamp, manipulate, params } = auditLogEntryDto;
 
-      // Validate user_id exists in users table
+      const userExists = await this.authService.userExists(user_id);
       const userExists = await this.authService.validateUserExists(user_id);
       if (!userExists) {
         throw new HttpException("User not found.", HttpStatus.BAD_REQUEST);
@@ -27,7 +28,9 @@ export class AuthController {
 
       // Validate timestamp is a valid datetime
       if (isNaN(Date.parse(timestamp))) {
-        throw new HttpException("Invalid timestamp.", HttpStatus.BAD_REQUEST);
+      } else if (!(timestamp instanceof Date)) {
+        timestamp = timestamp.toISOString();
+      }
       }
 
       // Validate manipulate is required and set to 'LOGIN_SUCCESS'
