@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { validate as isEmailValid } from 'email-validator';
 import { UserRepository } from 'src/repositories/users.repository';
 import { User, StatusEnum } from 'src/entities/users';
 import { AuditLog } from 'src/entities/audit_logs';
@@ -11,41 +12,37 @@ import { JwtService } from '@nestjs/jwt';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly userRepository: UserRepository,
+    @InjectRepository(User) private readonly userRepository: UserRepository,
     @InjectRepository(AuditLog)
     private readonly auditLogRepository: AuditLogRepository,
     private readonly jwtService: JwtService,
   ) {}
 
-  async authenticateUserLogin(email: string, password: string): Promise<{ token?: string, error?: string, redirect?: string }> {
-    if (!email || !password) {
-      throw new BadRequestException('Email and password must not be empty');
+  async authenticateUserLogin(email: string, password: string): Promise<{ token?: string, error?: string, redirect?: string, status?: number, message?: string }> {
+    if (!email || !password || !isEmailValid(email)) {
+      throw new BadRequestException('Email is required and must be a valid email address.');
     }
 
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
-      return { error: 'Incorrect login details' };
+      return { error: 'Incorrect login details', status: 401 };
     }
 
     switch (user.status) {
       case StatusEnum.LOCKED:
-        return { error: 'Account is locked' };
+        return { error: 'Account is locked.', status: 401 };
       case StatusEnum.INVALID:
-        return { error: 'Account is invalid' };
+        return { error: 'Account is invalid.', status: 401 };
     }
 
     const passwordHash = bcrypt.hashSync(password, user.password_salt);
     if (passwordHash !== user.password_hash) {
-      return { error: 'Incorrect login details' };
+      return { error: 'Incorrect login details', status: 401 };
     }
 
-    const currentDate = new Date();
-    if (user.password_last_changed && currentDate > user.password_last_changed) {
-      return { redirect: 'password-reset' };
-    }
-
-    if (!user.password_last_changed || user.password_last_changed === user.created_at) {
-      return { redirect: 'password-reset' };
+    const passwordExpired = user.password_last_changed && new Date() > new Date(user.password_last_changed);
+    if (!user.password_last_changed || passwordExpired) {
+      return { error: 'Password has expired, please reset your password.', status: 302 };
     }
 
     const token = this.jwtService.sign({ userId: user.id });
@@ -54,7 +51,7 @@ export class AuthService {
 
     await this.writeAuditLogEntry(user.id, new Date(), 'LOGIN_SUCCESS', JSON.stringify({ email }));
 
-    return { token };
+    return { token, status: 200, message: 'Login successful.' };
   }
 
   async writeAuditLogEntry(userId: number, timestamp: Date, manipulate: string, params: string): Promise<string> {
