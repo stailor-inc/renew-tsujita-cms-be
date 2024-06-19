@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm'; // Added from patch
 import { UserRepository } from 'src/repositories/users.repository';
 import { User, StatusEnum } from 'src/entities/users';
 import { AuditLog } from 'src/entities/audit_logs';
@@ -57,16 +58,21 @@ export class AuthService {
     return { token };
   }
 
-  async writeAuditLogEntry(userId: number, timestamp: Date, manipulate: string, params: string): Promise<string> {
-    const auditLogEntry = new AuditLog();
-    auditLogEntry.user_id = userId;
-    auditLogEntry.timestamp = timestamp;
-    auditLogEntry.manipulate = manipulate;
-    auditLogEntry.params = params;
+  async writeAuditLogEntry(userId: number, timestamp: Date, manipulate: string, params: string): Promise<AuditLog> { // Return type changed from string to AuditLog
+    try {
+      const auditLogEntry = new AuditLog();
+      auditLogEntry.user_id = userId;
+      auditLogEntry.timestamp = timestamp;
+      auditLogEntry.manipulate = manipulate;
+      auditLogEntry.params = params;
 
-    await this.auditLogRepository.save(auditLogEntry);
+      const savedAuditLogEntry = await this.auditLogRepository.save(auditLogEntry); // Changed to save and return the entry
 
-    return 'Audit log entry written successfully';
+      return savedAuditLogEntry; // Changed to return the saved entry
+    } catch (error) {
+      console.error('Failed to write audit log entry:', error);
+      throw new BadRequestException('Failed to write audit log entry');
+    }
   }
 
   // ... other methods in AuthService
