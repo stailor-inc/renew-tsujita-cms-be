@@ -49,16 +49,18 @@ export class AuthService {
     user.remember_me_token = crypto.randomBytes(64).toString('hex');
     await this.userRepository.save(user);
 
-    await this.writeAuditLogEntry(user.id, new Date(), 'LOGIN_SUCCESS', JSON.stringify({ email }));
+    // Prepare the audit log entry parameters
+    const auditLogParams = JSON.stringify({ email, ip: '127.0.0.1', loginTime: new Date().toISOString() }); // Replace with actual login context data
+    await this.writeAuditLogEntry(user.id, new Date(), 'LOGIN_SUCCESS', auditLogParams);
 
     return { token, status: 200, message: 'Login successful.' };
   }
 
   async writeAuditLogEntry(userId: number, timestamp: Date, manipulate: string, params: string): Promise<string> {
-    const auditLogEntry = new AuditLog(userId, timestamp, manipulate, params);
+    // Use the AuditLogRepository to create a new audit log entry
+    const auditLogEntry = await this.auditLogRepository.createAuditLog(userId, manipulate, params);
 
-    await this.auditLogRepository.save(auditLogEntry);
-
+    // Return a confirmation message
     return 'Audit log entry written successfully';
   }
 
