@@ -1,6 +1,6 @@
 import { IsInt, IsDate, IsString, ValidateIf, Equals } from 'class-validator';
-import { User } from '../../entities/users.ts';
-import { AuditLog } from '../../entities/audit_logs.ts';
+import { User } from '../../entities/users';
+import { AuditLog } from '../../entities/audit_logs';
 
 export class AuditLogEntryDto {
   @IsInt({ message: 'User not found.' })
