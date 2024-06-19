@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as dayjs from 'dayjs';
 import * as EmailValidator from 'email-validator';
 import { UserRepository } from 'src/repositories/users.repository';
 import { User, StatusEnum } from 'src/entities/users';
@@ -22,7 +23,7 @@ export class AuthService {
     if (!email || !password || !EmailValidator.validate(email)) {
       throw new BadRequestException('Email is required and must be a valid email address.');
     }
-
+    
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
       return { error: 'Incorrect login details', status: 401 };
@@ -30,7 +31,7 @@ export class AuthService {
 
     switch (user.status) {
       case StatusEnum.LOCKED:
-        return { error: 'Account is locked.', status: 401 };
+        return { error: 'Account is locked.', status: 401, redirect: '/password-reset' };
       case StatusEnum.INVALID:
         return { error: 'Account is invalid.', status: 401 };
     }
@@ -38,7 +39,7 @@ export class AuthService {
     const passwordHash = bcrypt.hashSync(password, user.password_salt);
     if (passwordHash !== user.password_hash) {
       return { error: 'Incorrect login details', status: 401 };
-    }
+    } 
 
     const passwordExpired = user.password_last_changed && new Date() > new Date(user.password_last_changed);
     if (!user.password_last_changed || passwordExpired) {
@@ -46,21 +47,29 @@ export class AuthService {
     }
 
     const token = this.jwtService.sign({ userId: user.id });
-    user.remember_me_token = crypto.randomBytes(64).toString('hex');
+    user.remember_me_token = crypto.randomBytes(64).toString('hex'); // Consider using a more secure token generation method
     await this.userRepository.save(user);
 
-    // Prepare the audit log entry parameters
-    const auditLogParams = JSON.stringify({ email, ip: '127.0.0.1', loginTime: new Date().toISOString() }); // Replace with actual login context data
-    await this.writeAuditLogEntry(user.id, new Date(), 'LOGIN_SUCCESS', auditLogParams);
+    await this.writeAuditLogEntry(user.id, new Date(), 'LOGIN_SUCCESS', JSON.stringify({ email }));
 
     return { token, status: 200, message: 'Login successful.' };
   }
 
   async writeAuditLogEntry(userId: number, timestamp: Date, manipulate: string, params: string): Promise<string> {
-    // Use the AuditLogRepository to create a new audit log entry
-    const auditLogEntry = await this.auditLogRepository.createAuditLog(userId, manipulate, params);
+    const auditLogEntry = new AuditLog(userId, timestamp, manipulate, params);
 
-    // Return a confirmation message
+    await this.auditLogRepository.save(auditLogEntry);
+
+    return 'Audit log entry written successfully';
+  }
+
+  // ... other methods in AuthService
+}
+  async writeAuditLogEntry(userId: number, timestamp: Date, manipulate: string, params: string): Promise<string> {
+    const auditLogEntry = new AuditLog(userId, timestamp, manipulate, params);
+
+    await this.auditLogRepository.save(auditLogEntry);
+
     return 'Audit log entry written successfully';
   }
 

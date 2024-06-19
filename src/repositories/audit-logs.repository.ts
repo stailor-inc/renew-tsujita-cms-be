@@ -4,13 +4,13 @@ import { AuditLog } from 'src/entities/audit_logs'; // Corrected import path
 
 @Injectable()
 export class AuditLogRepository extends BaseRepository<AuditLog> {
-  async createAuditLog(user_id: number, timestamp: Date, manipulate: string, params: string): Promise<AuditLog> {
-    const auditLogEntry = new AuditLog(user_id, timestamp, manipulate, params);
+  async createAuditLog(user_id: number, manipulate: string, params: any): Promise<AuditLog> {
+    const auditLogEntry = new AuditLog();
     auditLogEntry.timestamp = new Date(); // Set the current date as the timestamp
     auditLogEntry.manipulate = manipulate;
-    auditLogEntry.params = params;
+    auditLogEntry.params = JSON.stringify(params);
 
     // After applying the patch
-    return await this.createOne({ data: auditLogEntry });
+    return await this.save(auditLogEntry);
   }
 }
