@@ -1,5 +1,6 @@
 import { join } from 'path'
-import { NODE_ENV, Config } from 'src/constants' // Updated import
+import { NODE_ENV } from 'src/constants'
+import { Config } from './config.interface'
 import { DriverType } from '@codebrew/nestjs-storage'
 import { getCredentials } from 'src/utils/credentials'
 import { config } from 'dotenv'
