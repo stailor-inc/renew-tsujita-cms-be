@@ -33,6 +33,9 @@ export class AuditLog {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
+  @Column({ type: 'int' })
+  user_id: number;
+
   constructor(user_id: number, timestamp: Date, manipulate: string, params: string) {
     this.user_id = user_id;
     this.timestamp = timestamp;
