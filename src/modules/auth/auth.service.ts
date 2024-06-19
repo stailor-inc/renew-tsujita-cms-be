@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config'; // Added as per patch
 import * as EmailValidator from 'email-validator';
 import { UserRepository } from 'src/repositories/users.repository';
 import { User, StatusEnum } from 'src/entities/users';
@@ -16,6 +17,7 @@ export class AuthService {
     @InjectRepository(AuditLog)
     private readonly auditLogRepository: AuditLogRepository,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService, // Added as per patch
   ) {}
 
   async authenticateUserLogin(email: string, password: string): Promise<{ token?: string, error?: string, redirect?: string, status?: number, message?: string }> {
@@ -40,9 +42,16 @@ export class AuthService {
       return { error: 'Incorrect login details', status: 401 };
     }
 
-    const passwordExpired = user.password_last_changed && new Date() > new Date(user.password_last_changed);
+    // Changes as per patch
+    const passwordExpirationConfig = this.configService.get<string>('authentication.passwordExpirationDays');
+    const passwordExpirationDays = passwordExpirationConfig ? parseInt(passwordExpirationConfig, 10) : 90;
+    const passwordExpirationDate = new Date(user.password_last_changed);
+    passwordExpirationDate.setDate(passwordExpirationDate.getDate() + passwordExpirationDays);
+
+    const passwordExpired = user.password_last_changed && new Date() > passwordExpirationDate;
     if (!user.password_last_changed || passwordExpired) {
-      return { error: 'Password has expired, please reset your password.', status: 302 };
+      const resetPasswordUrl = this.configService.get<string>('authentication.resetPasswordUrl');
+      return { error: 'Password has expired, please reset your password.', status: 302, redirect: resetPasswordUrl };
     }
 
     const token = this.jwtService.sign({ userId: user.id });
@@ -60,18 +69,6 @@ export class AuthService {
     await this.auditLogRepository.save(auditLogEntry);
 
     return 'Audit log entry written successfully';
-  }
-
-  async writeExpiredPasswordAuditLog(userId: number, timestamp: Date, manipulate: string, params: string): Promise<string> {
-    const auditLogEntry = new AuditLog(userId, timestamp, manipulate, params);
-
-    await this.auditLogRepository.createAuditLog(
-      auditLogEntry.user_id,
-      auditLogEntry.manipulate,
-      auditLogEntry.params
-    );
-
-    return 'Audit log entry written for expired password attempt';
   }
 
   // ... other methods in AuthService
