@@ -1,5 +1,5 @@
 import { ClassConstructor, plainToClass } from 'class-transformer'
-import * as bcrypt from 'bcrypt'
+import * as bcrypt from 'bcryptjs'
 
 export function isPasswordExpired(passwordLastChanged: Date, currentDate: Date): boolean {
   if (!passwordLastChanged) return true

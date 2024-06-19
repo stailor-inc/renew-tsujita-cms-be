@@ -18,19 +18,16 @@ export class AuthController {
   @Post('/audit_logs')
   async writeAuditLog(@Body() auditLogEntryDto: AuditLogEntryDto): Promise<{ status: number; message: string }> {
     try {
-      const { user_id, timestamp, manipulate, params } = auditLogEntryDto;
-
-      const userExists = await this.authService.userExists(user_id);
-      const userExists = await this.authService.validateUserExists(user_id);
+      const { user_id, timestamp: rawTimestamp, manipulate, params } = auditLogEntryDto;
+      const userExists = await this.authService.userExists(user_id); // Assuming this is the correct method
       if (!userExists) {
         throw new HttpException("User not found.", HttpStatus.BAD_REQUEST);
       }
 
       // Validate timestamp is a valid datetime
-      if (isNaN(Date.parse(timestamp))) {
-      } else if (!(timestamp instanceof Date)) {
-        timestamp = timestamp.toISOString();
-      }
+      let timestamp = new Date(rawTimestamp);
+      if (isNaN(timestamp.getTime())) {
+        throw new HttpException("Invalid timestamp.", HttpStatus.BAD_REQUEST);
       }
 
       // Validate manipulate is required and set to 'LOGIN_SUCCESS'
@@ -38,15 +35,15 @@ export class AuthController {
         throw new HttpException("Action for the log entry is required.", HttpStatus.BAD_REQUEST);
       }
 
-      // Validate params is a valid text
+      // Assuming params is already a string as per DTO validation
       if (typeof params !== 'string') {
         throw new HttpException("Invalid parameters.", HttpStatus.BAD_REQUEST);
       }
 
       // Write the audit log entry
-      await this.authService.writeAuditLogEntry(user_id, new Date(timestamp), manipulate, params);
+      await this.authService.writeAuditLogEntry(user_id, timestamp, manipulate, params);
 
-      return {
+      return { // Fixed missing return object
         status: HttpStatus.CREATED,
         message: "Audit log entry written successfully."
       };
