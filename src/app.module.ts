@@ -16,7 +16,8 @@ import { NODE_ENV } from './constants'
 import { TypeOrmConfigService } from './database/typeorm-config.service'
 import { ShareModule } from './shared/share.module'
 import configs from './configs/index'
-import modules from './modules/index'
+// import modules from './modules/index' // Removed because of named exports
+import { HealthCheckModule, AuthModule } from './modules/index'
 import { HttpExceptionFilter } from './filters/http_exception.filter'
 
 @Module({
@@ -28,7 +29,7 @@ import { HttpExceptionFilter } from './filters/http_exception.filter'
         const dataSource = await new DataSource(options).initialize()
         return dataSource
       },
-    }),
+    }), 
     I18nModule.forRootAsync({
       useFactory: (configService: ConfigService) => ({
         fallbackLanguage: configService.get('app.fallbackLanguage'),
@@ -54,7 +55,7 @@ import { HttpExceptionFilter } from './filters/http_exception.filter'
     }),
     CacheModule.register({ isGlobal: true }),
     ShareModule,
-    ...modules,
+    HealthCheckModule, AuthModule,
   ],
   providers: [
     {
