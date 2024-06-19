@@ -1,2 +1,8 @@
-export { AuthModule } from './auth/auth.module';
 export { HealthCheckModule } from './health-check/health-check.module';
+import { AuthModule } from './auth/auth.module';
+
+export { AuthModule };
+export { HealthCheckModule } from './health-check/health-check.module';
+import { AuthModule } from './auth/auth.module';
+
+export { AuthModule };
