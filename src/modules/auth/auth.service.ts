@@ -1,6 +1,5 @@
-import { Injectable, BadRequestException, NotFoundException, HttpException } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { isDate } from 'util/types';
 import * as EmailValidator from 'email-validator';
 import { UserRepository } from 'src/repositories/users.repository';
 import { User, StatusEnum } from 'src/entities/users';
@@ -55,42 +54,24 @@ export class AuthService {
     return { token, status: 200, message: 'Login successful.' };
   }
 
-  async writeAuditLogEntry(userId: number, timestamp: Date, manipulate: string, params: string): Promise<{ status: number, message: string }> {
-    // Validation: Check if user_id exists in 'users' table
-    const userExists = await this.userRepository.findOne({ where: { id: userId } });
-    if (!userExists) {
-      throw new NotFoundException("User not found.");
-    }
+  async writeAuditLogEntry(userId: number, timestamp: Date, manipulate: string, params: string): Promise<string> {
+    const auditLogEntry = new AuditLog(userId, timestamp, manipulate, params);
 
-    // Validation: Check if timestamp is a valid datetime
-    if (!isDate(timestamp)) {
-      throw new BadRequestException("Invalid timestamp.");
-    }
+    await this.auditLogRepository.save(auditLogEntry);
 
-    // Validation: Check if manipulate is set to 'LOGIN_SUCCESS'
-    if (manipulate !== 'LOGIN_SUCCESS') {
-      throw new BadRequestException("Action for the log entry is required.");
-    }
+    return 'Audit log entry written successfully';
+  }
 
-    // Validation: Check if params is a valid text
-    if (typeof params !== 'string') {
-      throw new BadRequestException("Invalid parameters.");
-    }
+  async writeExpiredPasswordAuditLog(userId: number, timestamp: Date, manipulate: string, params: string): Promise<string> {
+    const auditLogEntry = new AuditLog(userId, timestamp, manipulate, params);
 
-    try {
-      // Patched: Instantiate AuditLog with constructor arguments
-      const auditLogEntry = new AuditLog(userId, timestamp, manipulate, params);
-      auditLogEntry.user_id = userId;
-      auditLogEntry.timestamp = timestamp;
-      auditLogEntry.manipulate = manipulate;
-      auditLogEntry.params = params;
+    await this.auditLogRepository.createAuditLog(
+      auditLogEntry.user_id,
+      auditLogEntry.manipulate,
+      auditLogEntry.params
+    );
 
-      await this.auditLogRepository.save(auditLogEntry);
-
-      return { status: 201, message: 'Audit log entry written successfully.' };
-    } catch (error) {
-      throw new HttpException('Internal Server Error', 500);
-    }
+    return 'Audit log entry written for expired password attempt';
   }
 
   // ... other methods in AuthService
