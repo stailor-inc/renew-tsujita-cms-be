@@ -3,4 +3,6 @@ export class LoginResponseDto {
   message: string;
   session_token?: string;
   redirect?: string; // Redirection command to home page or password reset page if needed
+  error?: string;
+  token?: string;
 }

@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { validate as isEmailValid } from 'email-validator';
+import * as EmailValidator from 'email-validator';
 import { UserRepository } from 'src/repositories/users.repository';
 import { User, StatusEnum } from 'src/entities/users';
 import { AuditLog } from 'src/entities/audit_logs';
@@ -19,7 +19,7 @@ export class AuthService {
   ) {}
 
   async authenticateUserLogin(email: string, password: string): Promise<{ token?: string, error?: string, redirect?: string, status?: number, message?: string }> {
-    if (!email || !password || !isEmailValid(email)) {
+    if (!email || !password || !EmailValidator.validate(email)) {
       throw new BadRequestException('Email is required and must be a valid email address.');
     }
 
@@ -55,11 +55,7 @@ export class AuthService {
   }
 
   async writeAuditLogEntry(userId: number, timestamp: Date, manipulate: string, params: string): Promise<string> {
-    const auditLogEntry = new AuditLog();
-    auditLogEntry.user_id = userId;
-    auditLogEntry.timestamp = timestamp;
-    auditLogEntry.manipulate = manipulate;
-    auditLogEntry.params = params;
+    const auditLogEntry = new AuditLog(userId, timestamp, manipulate, params);
 
     await this.auditLogRepository.save(auditLogEntry);
 
