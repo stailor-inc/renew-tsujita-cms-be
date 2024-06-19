@@ -6,8 +6,8 @@ import {
   UpdateDateColumn,
   OneToMany,
   JoinColumn,
-} from 'typeorm'; // Ensure this import is from the correct package
-import { AuditLog } from '@entities/audit_logs'; // Verify this import path is correct
+} from 'typeorm';
+import { AuditLog } from '@entities/audit_logs';
 
 enum StatusEnum {
   ACTIVE = 'ACTIVE',
@@ -41,10 +41,10 @@ export class User {
   @Column({
     nullable: true,
     type: 'enum',
-    enum: StatusEnum, // Use the StatusEnum for the enum type
-    default: StatusEnum.ACTIVE, // Use the StatusEnum for the default value
+    enum: ['ACTIVE', 'LOCKED', 'INVALID'],
+    default: 'ACTIVE',
   })
-  status: StatusEnum; // Use the StatusEnum for the status type
+  status: `${StatusEnum}` = 'ACTIVE';
 
   @Column({ nullable: true, type: 'timestamp' })
   password_last_changed: Date;
@@ -57,4 +57,4 @@ export class User {
   audit_logs: AuditLog[];
 }
 
-export { StatusEnum }; // Ensure the StatusEnum is exported correctly
+export { StatusEnum };
