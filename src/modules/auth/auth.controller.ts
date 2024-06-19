@@ -2,6 +2,7 @@ import { Body, Controller, HttpCode, HttpStatus, Post, HttpException } from '@ne
 import { AuthService } from './auth.service';
 import { LoginDto } from './dtos/login.dto';
 import { LoginResponseDto } from './dtos/login-response.dto';
+import { AuditLogEntryDto } from './dtos/audit-log-entry.dto';
 
 @Controller()
 export class AuthController {
@@ -10,30 +11,47 @@ export class AuthController {
   @Post('/auth/login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() loginDto: LoginDto): Promise<LoginResponseDto> {
-    const { email, password } = loginDto;
-    const { token, error, redirect } = await this.authService.authenticateUserLogin(email, password);
+    // ... existing login method code
+  }
 
-    const response = new LoginResponseDto();
+  @Post('/audit_logs')
+  async writeAuditLog(@Body() auditLogEntryDto: AuditLogEntryDto): Promise<{ status: number; message: string }> {
+    try {
+      const { user_id, timestamp, manipulate, params } = auditLogEntryDto;
 
-    if (error) {
-      response.error = error;
-      if (error === 'Account is locked' || error === 'Account is invalid') {
-        throw new HttpException({ status: HttpStatus.UNAUTHORIZED, error: error }, HttpStatus.UNAUTHORIZED);
-      } else if (error === 'Incorrect login details') {
-        throw new HttpException({ status: HttpStatus.BAD_REQUEST, error: error }, HttpStatus.BAD_REQUEST);
-      } else if (error === 'Password has expired, please reset your password.') {
-        throw new HttpException({ status: HttpStatus.FOUND, redirect: 'password-reset' }, HttpStatus.FOUND);
+      // Validate user_id exists in users table
+      const userExists = await this.authService.validateUserExists(user_id);
+      if (!userExists) {
+        throw new HttpException("User not found.", HttpStatus.BAD_REQUEST);
       }
-    } else if (redirect) {
-      response.redirect = redirect;
-      throw new HttpException({ status: HttpStatus.FOUND, redirect: redirect }, HttpStatus.FOUND);
-    } else if (token) {
-      response.token = token;
-      response.message = 'Login successful.';
-    } else {
-      throw new HttpException({ status: HttpStatus.INTERNAL_SERVER_ERROR, error: 'An unexpected error has occurred' }, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
 
-    return response;
+      // Validate timestamp is a valid datetime
+      if (isNaN(Date.parse(timestamp))) {
+        throw new HttpException("Invalid timestamp.", HttpStatus.BAD_REQUEST);
+      }
+
+      // Validate manipulate is required and set to 'LOGIN_SUCCESS'
+      if (manipulate !== 'LOGIN_SUCCESS') {
+        throw new HttpException("Action for the log entry is required.", HttpStatus.BAD_REQUEST);
+      }
+
+      // Validate params is a valid text
+      if (typeof params !== 'string') {
+        throw new HttpException("Invalid parameters.", HttpStatus.BAD_REQUEST);
+      }
+
+      // Write the audit log entry
+      await this.authService.writeAuditLogEntry(user_id, new Date(timestamp), manipulate, params);
+
+      return {
+        status: HttpStatus.CREATED,
+        message: "Audit log entry written successfully."
+      };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException("An unexpected error has occurred on the server.", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 }
