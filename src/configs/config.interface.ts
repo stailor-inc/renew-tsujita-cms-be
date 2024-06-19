@@ -122,6 +122,7 @@ export interface AuthenticationConfig {
   sendConfirmationEmail: boolean
   confirmationUrl: string
   confirmationIn: number
+  passwordExpirationDays: number
   resetPasswordUrl: string
   resetPasswordIn: number
   passwordPattern?: string | RegExp
