@@ -47,6 +47,7 @@
     "@nestjs/swagger": "7.0.12",
     "@slynova/flydrive": "1.0.3",
     "@slynova/flydrive-s3": "1.0.3",
+    "email-validator": "^2.0.4",
     "bcryptjs": "2.4.3",
     "bull": "4.10.1",
     "cache-manager": "4.1.0",
