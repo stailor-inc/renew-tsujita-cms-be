@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { BaseRepository } from 'src/shared/base.repository';
-import { AuditLog } from 'src/entities/audit_logs';
+import { AuditLog } from '@entities/audit_logs'; // Corrected import path
 
 @Injectable()
 export class AuditLogRepository extends BaseRepository<AuditLog> {
-  async createAuditLog(user_id: number, timestamp: Date, manipulate: string, params: string): Promise<AuditLog> {
+  async createAuditLog(user_id: number, manipulate: string, params: string): Promise<AuditLog> {
     const auditLogEntry = new AuditLog();
     auditLogEntry.user_id = user_id;
-    auditLogEntry.timestamp = timestamp;
+    auditLogEntry.timestamp = new Date(); // Set the current date as the timestamp
     auditLogEntry.manipulate = manipulate;
     auditLogEntry.params = params;
 
