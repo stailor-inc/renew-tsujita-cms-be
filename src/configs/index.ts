@@ -1,6 +1,6 @@
 import { join } from 'path'
 import { NODE_ENV } from 'src/constants'
-import type { Config } from './config.interface'
+import { Config } from './config.interface'
 import { DriverType } from '@codebrew/nestjs-storage'
 import { getCredentials } from 'src/utils/credentials'
 import { config } from 'dotenv'
@@ -76,6 +76,7 @@ export default (): Config => {
       sendConfirmationEmail: Boolean(process.env.AUTH_SEND_CONFIRMATION_EMAIL) || false,
       confirmationUrl: process.env.AUTH_CONFIRMATION_URL || 'http://localhost:3000/confirm',
       confirmationIn: +process.env.AUTH_CONFIRMATION_IN || 24,
+      passwordExpirationDays: +process.env.AUTH_PASSWORD_EXPIRATION_DAYS || 90, // Added line
       resetPasswordUrl:
         process.env.AUTH_RESET_PASSWORD_URL || 'http://localhost:3000/reset-password',
       resetPasswordIn: +process.env.AUTH_RESET_PASSWORD_IN || 1,
