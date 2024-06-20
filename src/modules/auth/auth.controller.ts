@@ -17,8 +17,10 @@ export class AuthController {
 
     if (error) {
       response.error = error;
-      if (error === 'Account is locked' || error === 'Account is invalid') {
+      if (error === 'Account is locked') {
         throw new HttpException({ status: HttpStatus.UNAUTHORIZED, error: error }, HttpStatus.UNAUTHORIZED);
+      } else if (error === 'Account has been locked due to multiple failed login attempts.') {
+        throw new HttpException({ status: HttpStatus.TOO_MANY_REQUESTS, error: error }, HttpStatus.TOO_MANY_REQUESTS);
       } else if (error === 'Incorrect login details') {
         throw new HttpException({ status: HttpStatus.BAD_REQUEST, error: error }, HttpStatus.BAD_REQUEST);
       } else if (error === 'Password has expired, please reset your password.') {

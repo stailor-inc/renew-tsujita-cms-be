@@ -25,16 +25,11 @@ export class AuthService {
       throw new BadRequestException('Email is required and must be a valid email address.');
     }
 
+    const maximumAttempts = this.configService.get<number>('authentication.maximumAttempts', 5);
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) {
       return { error: 'Incorrect login details', status: 401 };
     }
-
-    const passwordExpirationDays = this.configService.get<number>('authentication.passwordExpirationDays');
-    const passwordExpirationDate = new Date(user.password_last_changed);
-    passwordExpirationDate.setDate(passwordExpirationDate.getDate() + passwordExpirationDays);
-    const currentDate = new Date();
-    const isPasswordExpired = currentDate > passwordExpirationDate;
 
     switch (user.status) {
       case StatusEnum.LOCKED:
@@ -42,25 +37,30 @@ export class AuthService {
       case StatusEnum.INVALID:
         return { error: 'Account is invalid.', status: 401 };
     }
-
+    
     const passwordHash = bcrypt.hashSync(password, user.password_salt);
     if (passwordHash !== user.password_hash) {
+      user.failedAttempts = (user.failedAttempts || 0) + 1;
+      if (user.failedAttempts >= maximumAttempts) {
+        user.status = StatusEnum.LOCKED;
+        await this.writeAuditLogEntry(user.id, new Date(), 'ACCOUNT_LOCKED', JSON.stringify({ email }));
+        await this.userRepository.save(user);
+        return { error: 'Account has been locked due to multiple failed login attempts.', status: 429 };
+      }
+      await this.userRepository.save(user);
       return { error: 'Incorrect login details', status: 401 };
     }
 
-    if (!user.password_last_changed || isPasswordExpired) {
-      return { 
-        error: 'Password has expired, please reset your password.', 
-        status: 302,
-        redirect: this.configService.get<string>('authentication.resetPasswordUrl'),
-      };
+    const passwordExpired = user.password_last_changed && new Date() > new Date(user.password_last_changed);
+    if (!user.password_last_changed || passwordExpired) {
+      return { error: 'Password has expired, please reset your password.', status: 302 };
     }
 
     const token = this.jwtService.sign({ userId: user.id });
     user.remember_me_token = crypto.randomBytes(64).toString('hex');
     await this.userRepository.save(user);
 
-    await this.writeAuditLogEntry(user.id, new Date(), 'LOGIN_SUCCESS', JSON.stringify({ email }));
+    await this.writeAuditLogEntry(user.id, new Date(), 'LOGIN_SUCCESS', JSON.stringify({ email: user.email }));
 
     return { token, status: 200, message: 'Login successful.' };
   }
