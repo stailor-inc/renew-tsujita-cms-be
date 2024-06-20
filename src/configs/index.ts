@@ -80,6 +80,7 @@ export default (): Config => {
         process.env.AUTH_RESET_PASSWORD_URL || 'http://localhost:3000/reset-password',
       resetPasswordIn: +process.env.AUTH_RESET_PASSWORD_IN || 1,
       maximumAttempts: +process.env.AUTH_MAXIMUM_ATTEMPTS || 5,
+      passwordExpirationDays: +process.env.AUTH_PASSWORD_EXPIRATION_DAYS || 90,
     },
     mail: {
       provider: process.env.MAIL_PROVIDER || 'maildev',

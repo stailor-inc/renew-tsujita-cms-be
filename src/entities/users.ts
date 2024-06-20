@@ -46,6 +46,9 @@ export class User {
   })
   status: `${StatusEnum}` = 'ACTIVE';
 
+  @Column({ default: 0 })
+  failedAttempts: number;
+
   @Column({ nullable: true, type: 'timestamp' })
   password_last_changed: Date;
 
