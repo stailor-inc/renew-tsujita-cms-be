@@ -1,6 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ConfigService } from '@nestjs/config';
 import * as EmailValidator from 'email-validator';
 import { UserRepository } from 'src/repositories/users.repository';
 import { User, StatusEnum } from 'src/entities/users';
@@ -13,7 +12,6 @@ import { JwtService } from '@nestjs/jwt';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly configService: ConfigService,
     @InjectRepository(User) private readonly userRepository: UserRepository,
     @InjectRepository(AuditLog)
     private readonly auditLogRepository: AuditLogRepository,
@@ -30,12 +28,6 @@ export class AuthService {
       return { error: 'Incorrect login details', status: 401 };
     }
 
-    const passwordExpirationDays = this.configService.get<number>('authentication.passwordExpirationDays');
-    const passwordExpirationDate = new Date(user.password_last_changed);
-    passwordExpirationDate.setDate(passwordExpirationDate.getDate() + passwordExpirationDays);
-    const currentDate = new Date();
-    const isPasswordExpired = currentDate > passwordExpirationDate;
-
     switch (user.status) {
       case StatusEnum.LOCKED:
         return { error: 'Account is locked.', status: 401 };
@@ -48,12 +40,9 @@ export class AuthService {
       return { error: 'Incorrect login details', status: 401 };
     }
 
-    if (!user.password_last_changed || isPasswordExpired) {
-      return { 
-        error: 'Password has expired, please reset your password.', 
-        status: 302,
-        redirect: this.configService.get<string>('authentication.resetPasswordUrl'),
-      };
+    const passwordExpired = user.password_last_changed && new Date() > new Date(user.password_last_changed);
+    if (!user.password_last_changed || passwordExpired) {
+      return { error: 'Password has expired, please reset your password.', status: 302 };
     }
 
     const token = this.jwtService.sign({ userId: user.id });
@@ -71,6 +60,24 @@ export class AuthService {
     await this.auditLogRepository.save(auditLogEntry);
 
     return 'Audit log entry written successfully';
+  }
+
+  async lockUserAccount(userId: number): Promise<string> {
+    // Retrieve the user by id using UserRepository
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new Error('User not found.');
+    }
+    // Check if the user's status is already LOCKED to avoid redundant operations
+    if (user.status === StatusEnum.LOCKED) {
+      return 'User account is already locked.';
+    }
+    // Update the user's status to LOCKED
+    user.status = StatusEnum.LOCKED;
+    await this.userRepository.save(user);
+    // Write an entry to the 'audit_logs' table using AuditLogRepository
+    await this.writeAuditLogEntry(userId, new Date(), 'ACCOUNT_LOCKED', 'User account locked due to failed login attempts');
+    return 'User account has been locked.';
   }
 
   // ... other methods in AuthService
