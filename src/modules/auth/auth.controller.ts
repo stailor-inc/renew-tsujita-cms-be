@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, HttpException } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, HttpException, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dtos/login.dto';
 import { LoginResponseDto } from './dtos/login-response.dto';
@@ -22,7 +22,6 @@ export class AuthController {
       } else if (error === 'Incorrect login details') {
         throw new HttpException({ status: HttpStatus.BAD_REQUEST, error: error }, HttpStatus.BAD_REQUEST);
       } else if (error === 'Password has expired, please reset your password.') {
-        response.redirect = 'password-reset';
         throw new HttpException({ status: HttpStatus.FOUND, redirect: 'password-reset' }, HttpStatus.FOUND);
       }
     } else if (redirect) {
@@ -36,5 +35,13 @@ export class AuthController {
     }
 
     return response;
+  }
+
+  @Get('/auth/signup-redirect')
+  redirectSignup() {
+    return {
+      status: 302,
+      Location: '/auth/signup',
+    };
   }
 }
